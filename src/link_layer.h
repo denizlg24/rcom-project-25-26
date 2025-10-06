@@ -4,19 +4,17 @@
 #ifndef _LINK_LAYER_H_
 #define _LINK_LAYER_H_
 
-typedef enum
-{
-    LlTx,
-    LlRx,
+typedef enum {
+  LlTx,
+  LlRx,
 } LinkLayerRole;
 
-typedef struct
-{
-    char serialPort[50];
-    LinkLayerRole role;
-    int baudRate;
-    int nRetransmissions;
-    int timeout;
+typedef struct {
+  char serialPort[50];
+  LinkLayerRole role;
+  int baudRate;
+  int nRetransmissions;
+  int timeout;
 } LinkLayer;
 
 // Size of maximum acceptable payload.
@@ -39,8 +37,8 @@ int llwrite(const unsigned char *buf, int bufSize);
 // Return number of chars read, or -1 on error.
 int llread(unsigned char *packet);
 
-// Close previously opened connection and print transmission statistics in the console.
-// Return 0 on success or -1 on error.
+// Close previously opened connection and print transmission statistics in the
+// console. Return 0 on success or -1 on error.
 int llclose();
 
 #endif // _LINK_LAYER_H_

@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "serial_port.h": "c"
+        "*.css": "tailwindcss",
+        "serial_port.h": "c",
+        "unistd.h": "c",
+        "connection_state_machine.h": "c"
     }
 }
