@@ -3,6 +3,14 @@
         "*.css": "tailwindcss",
         "serial_port.h": "c",
         "unistd.h": "c",
-        "connection_state_machine.h": "c"
+        "connection_state_machine.h": "c",
+        "llopen_connection.h": "c",
+        "stdio.h": "c",
+        "frame_helpers.h": "c",
+        "llwrite_frame.h": "c",
+        "cstdlib": "c",
+        "string.h": "c",
+        "link_layer_state_machine.h": "c",
+        "link_layer.h": "c"
     }
 }
