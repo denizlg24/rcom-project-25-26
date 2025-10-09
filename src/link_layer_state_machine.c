@@ -40,7 +40,7 @@ State transitionState(State currState, unsigned char byte,
     return START;
 
   case BCC_OK:
-    if (byte == FLAG) {
+    if (byte == expectedHeader[4]) {
       return STOP;
     }
     return START;
@@ -53,6 +53,7 @@ State transitionState(State currState, unsigned char byte,
 int processStateMachine(State *currState, unsigned char byte,
                         unsigned char *abortSignal,
                         const unsigned char *expectedHeader) {
+
   if (*currState == STOP || *abortSignal != 0) {
     return 0;
   }

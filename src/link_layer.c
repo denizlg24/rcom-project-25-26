@@ -1,5 +1,6 @@
 // Link layer protocol implementation
 #include "llopen_connection.h"
+#include "llread_frame.h"
 #include "llwrite_frame.h"
 #include "serial_port.h"
 #include <stdio.h>
@@ -38,18 +39,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet) {
-  // TODO: Implement this function`
-  unsigned char byte;
-  while (1) {
-    int bytes = readByteSerialPort(&byte);
-    if (bytes > 0) {
-      printf("var = 0x%02X\n", byte);
-    }
-  }
-
-  return 0;
-}
+int llread(unsigned char *packet) { return llread_frame(packet); }
 
 ////////////////////////////////////////////////
 // LLCLOSE

@@ -23,8 +23,7 @@ int send_frame(const unsigned char *frame, size_t size) {
   return 0;
 }
 
-int read_frame(const unsigned char *expected,
-                      unsigned char *abortSignal) {
+int read_frame(const unsigned char *expected, unsigned char *abortSignal) {
   unsigned char byte;
   State currState = START;
   (*abortSignal) = 0;

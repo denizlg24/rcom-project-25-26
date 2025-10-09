@@ -22,6 +22,10 @@
 #define C_I0 ((unsigned char)0x00)
 #define C_I1 ((unsigned char)0x80)
 
+#define ESC ((unsigned char)0x7D)
+#define ESC_FLAG ((unsigned char)0x5E)
+#define ESC_ESC ((unsigned char)0x5D)
+
 static const unsigned char SET_FRAME[5] = {FLAG, A_TX, C_SET, BCC1(A_TX, C_SET),
                                            FLAG};
 static const unsigned char UA_FRAME[5] = {FLAG, A_RX, C_UA, BCC1(A_RX, C_UA),

@@ -19,38 +19,78 @@ static void tx_alarm_handler(int signal) {
   abortSignal = 1;
 }
 
-void build_frame(int _ns, const unsigned char *buf, size_t bufSize,
-                 unsigned char *frame, size_t *frameSize) {
-  const unsigned char *header = (_ns == 0) ? I0_HEADER : I1_HEADER;
-  memcpy(frame, header, 4);
-  memcpy(frame + 4, buf, bufSize);
-  frame[4 + bufSize] = compute_bcc2(buf, bufSize);
-  frame[4 + bufSize + 1] = FLAG;
-  *frameSize = bufSize + 6;
+int stuff_bytes(const unsigned char *input, int inputSize,
+                unsigned char *output) {
+  int j = 0;
+
+  for (int i = 0; i < inputSize; i++) {
+    if (input[i] == FLAG) {
+      output[j++] = ESC;
+      output[j++] = ESC_FLAG;
+    } else if (input[i] == ESC) {
+      output[j++] = ESC;
+      output[j++] = ESC_ESC;
+    } else {
+      output[j++] = input[i];
+    }
+  }
+
+  return j;
+}
+
+void build_frame(const unsigned char *buf, int bufSize,
+                 const unsigned char *header, unsigned char *frame,
+                 int *frameSize) {
+  int headerSize = 4;
+  memcpy(frame, header, headerSize);
+
+  unsigned char stuffedBuf[2 * bufSize + 2];
+  int stuffedSize = stuff_bytes(buf, bufSize, stuffedBuf);
+
+  memcpy(frame + headerSize, stuffedBuf, stuffedSize);
+
+  unsigned char bcc2 = compute_bcc2(buf, bufSize);
+  unsigned char bcc2Stuffed[2];
+  int bcc2Size = stuff_bytes(&bcc2, 1, bcc2Stuffed);
+
+  memcpy(frame + headerSize + stuffedSize, bcc2Stuffed, bcc2Size);
+
+  frame[headerSize + stuffedSize + bcc2Size] = FLAG;
+  *frameSize = headerSize + stuffedSize + bcc2Size + 1;
 }
 
 static int send_and_wait(LinkLayer connectionParameters,
-                         const unsigned char *frame,
+                         const unsigned char *frame, int *frameSize,
                          const unsigned char *expectedResponse) {
   printf("[TX] Attempt %d/%d: Sending frame...\n", tries + 1,
          connectionParameters.nRetransmissions);
 
   alarm(connectionParameters.timeout);
-  send_frame(frame, sizeof(frame));
+  send_frame(frame, *frameSize);
   abortSignal = 0;
-  printf("[TX] Attempt %d/%d: Waiting for RR...\n", tries + 1,
-         connectionParameters.nRetransmissions);
+  printf("[TX] Attempt %d/%d: Waiting for RR%d...\n", tries + 1,
+         connectionParameters.nRetransmissions, (ns + 1) % 2);
   int success = read_frame(expectedResponse, &abortSignal);
-  alarm(0);
+  if (success) {
+    printf("[TX] Attempt %d/%d: Received RR%d...\n", tries + 1,
+           connectionParameters.nRetransmissions, (ns + 1) % 2);
+    alarm(0);
+  } else {
+    printf("[TX] Attempt %d/%d: Dind't receive RR%d...\n", tries + 1,
+           connectionParameters.nRetransmissions, (ns + 1) % 2);
+  }
   return success;
 }
 
 int llwrite_frame(const unsigned char *buf, int bufSize,
                   LinkLayer connectionParameters) {
-
   unsigned char frame[bufSize + 6];
-  size_t frameSize;
-  build_frame(ns, buf, bufSize, frame, &frameSize);
+  int frameSize;
+  if (ns == 0) {
+    build_frame(buf, bufSize, I0_HEADER, frame, &frameSize);
+  } else {
+    build_frame(buf, bufSize, I1_HEADER, frame, &frameSize);
+  }
 
   struct sigaction act = {0};
   act.sa_handler = tx_alarm_handler;
@@ -65,7 +105,8 @@ int llwrite_frame(const unsigned char *buf, int bufSize,
   unsigned char RRReceived = 0;
   const unsigned char *expectedRR = ns == 0 ? RR1_FRAME : RR0_FRAME;
   while (tries < connectionParameters.nRetransmissions && !RRReceived) {
-    RRReceived = send_and_wait(connectionParameters, frame, expectedRR);
+    RRReceived =
+        send_and_wait(connectionParameters, frame, &frameSize, expectedRR);
   }
 
   if (!RRReceived) {
