@@ -2,6 +2,7 @@
 
 #include "llwrite_frame.h"
 #include "frame_helpers.h"
+#include "link_layer_state_machine.h"
 #include "serial_port.h"
 #include "string.h"
 #include <signal.h>
@@ -59,6 +60,36 @@ void build_frame(const unsigned char *buf, int bufSize,
   *frameSize = headerSize + stuffedSize + bcc2Size + 1;
 }
 
+int read_response(const unsigned char *expected, unsigned char *abortSignal) {
+  unsigned char byte;
+  State successState = START;
+  State rejectState = START;
+  (*abortSignal) = 0;
+  while (successState != STOP && rejectState != STOP && (*abortSignal) != 1) {
+    int bytes = readByteSerialPort(&byte);
+    if (bytes == -1) {
+      perror("readByteSerialPort");
+      if (closeSerialPort() < 0) {
+        perror("closeSerialPort");
+      }
+      exit(EXIT_FAILURE);
+    }
+
+    if (bytes > 0) {
+      int isSuccess =
+          !processStateMachine(&successState, byte, abortSignal, expected);
+      int rejected = !processStateMachine(&rejectState, byte, abortSignal,
+                                          ns == 0 ? REJ0_FRAME : REJ1_FRAME);
+      if (isSuccess || rejected)
+        break;
+    }
+  }
+  if (rejectState == STOP) {
+    return -1;
+  }
+  return successState == STOP;
+}
+
 static int send_and_wait(LinkLayer connectionParameters,
                          const unsigned char *frame, int *frameSize,
                          const unsigned char *expectedResponse) {
@@ -70,14 +101,17 @@ static int send_and_wait(LinkLayer connectionParameters,
   abortSignal = 0;
   printf("[TX] Attempt %d/%d: Waiting for RR%d...\n", tries + 1,
          connectionParameters.nRetransmissions, (ns + 1) % 2);
-  int success = read_frame(expectedResponse, &abortSignal);
-  if (success) {
-    printf("[TX] Attempt %d/%d: Received RR%d...\n", tries + 1,
+  int success = read_response(expectedResponse, &abortSignal);
+  if (success > 0) {
+    printf("[TX] Attempt %d/%d: Received RR%d\n", tries + 1,
            connectionParameters.nRetransmissions, (ns + 1) % 2);
     alarm(0);
-  } else {
-    printf("[TX] Attempt %d/%d: Dind't receive RR%d...\n", tries + 1,
+  } else if (success == 0) {
+    printf("[TX] Attempt %d/%d: Dind't receive RR%d\n", tries + 1,
            connectionParameters.nRetransmissions, (ns + 1) % 2);
+  } else {
+    printf("[TX] Attempt %d/%d: Got REJ%d\n", tries + 1,
+           connectionParameters.nRetransmissions, ns);
   }
   return success;
 }
@@ -102,9 +136,9 @@ int llwrite_frame(const unsigned char *buf, int bufSize,
   tries = 0;
   abortSignal = 0;
 
-  unsigned char RRReceived = 0;
+  int RRReceived = 0;
   const unsigned char *expectedRR = ns == 0 ? RR1_FRAME : RR0_FRAME;
-  while (tries < connectionParameters.nRetransmissions && !RRReceived) {
+  while (tries < connectionParameters.nRetransmissions && RRReceived < 1) {
     RRReceived =
         send_and_wait(connectionParameters, frame, &frameSize, expectedRR);
   }
