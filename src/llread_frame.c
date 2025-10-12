@@ -78,7 +78,7 @@ int read_packet(unsigned char *packet, const unsigned char *expectedHeader) {
         unsigned char computed = compute_bcc2(frame + 4, payloadSize);
 
         if (bcc2 != computed) {
-          printf("[RX]: BCC2 error: expected %02X, got %02X\n", computed, bcc2);
+          printf("[RX] BCC2 error: expected %02X, got %02X\n", computed, bcc2);
           send_frame(readyFor == 0 ? REJ0_FRAME : REJ1_FRAME, 5);
           return -1;
         }
@@ -89,7 +89,7 @@ int read_packet(unsigned char *packet, const unsigned char *expectedHeader) {
       }
       i++;
       if (i >= MAX_PAYLOAD_SIZE + 6) {
-        printf("[RX]: Frame too large.\n");
+        printf("[RX] Frame too large.\n");
         return -1;
       }
     }
