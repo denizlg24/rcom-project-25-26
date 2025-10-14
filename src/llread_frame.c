@@ -10,6 +10,7 @@ static int readyFor = 0;
 
 int read_header(const unsigned char *expectedHeader) {
   State currState = START;
+  State prevState = START;
   unsigned char dummyAbort = 0;
   unsigned char byte;
 
@@ -23,9 +24,14 @@ int read_header(const unsigned char *expectedHeader) {
       exit(EXIT_FAILURE);
     }
 
-    if (bytes > 0 &&
-        !processStateMachine(&currState, byte, &dummyAbort, expectedHeader)) {
-      break;
+    if (bytes > 0){
+      int expectedSuccess = !processStateMachine(&currState, byte, &dummyAbort, expectedHeader);
+      int previousReceived = !processStateMachine(&prevState,byte,&dummyAbort,readyFor == 0 ? I1_HEADER : I0_HEADER);
+      if(expectedSuccess||previousReceived) break;
+      if(prevState == BCC_OK){
+        send_frame(readyFor == 0 ? RR0_FRAME : RR1_FRAME, 5);
+        return -1;
+      }
     }
   }
   return 0;
@@ -88,8 +94,8 @@ int read_packet(unsigned char *packet, const unsigned char *expectedHeader) {
         return payloadSize;
       }
       i++;
-      if (i >= MAX_PAYLOAD_SIZE + 6) {
-        printf("[RX] Frame too large.\n");
+      if (i > MAX_PAYLOAD_SIZE + 6) {
+        printf("[RX] Frame too large. size=%d\n",i);
         return -1;
       }
     }

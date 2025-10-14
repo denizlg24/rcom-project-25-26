@@ -3,6 +3,8 @@
 #include "application_layer.h"
 #include "link_layer.h"
 #include "serial_port.h"
+#include "packet_helpers.h"
+#include "serial_port.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,36 +26,65 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
   }
 
   if (options.role == LlTx) {
-    unsigned char buf1[] = "Hello world from the transmitter.";
-    printf("=== Test 1: short text ===\n");
-    llwrite(buf1, sizeof(buf1) - 1);
-    unsigned char buf2[] = "This"
-                           "\x7E"
-                           "is"
-                           "\x7D"
-                           "another"
-                           "\x7E"
-                           "test"
-                           "\x7D"
-                           "string!";
-    printf("=== Test 2: short text with stuffing ===\n");
-    llwrite(buf2, sizeof(buf2) - 1);
+    long file_size = get_file_size(filename);
+    if (file_size < 0) exit(EXIT_FAILURE);
+
+    unsigned char control_packet[256];
+    int control_packet_size = build_control_packet(control_packet, (const unsigned char*)filename, strlen(filename), file_size);
+    llwrite(control_packet,control_packet_size);
+
+     FILE* fp = fopen(filename, "rb");
+    if (!fp) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    int max_data_bytes = 5;
+    unsigned char file_data[max_data_bytes];
+    unsigned char data_packet[MAX_PAYLOAD_SIZE];
+    size_t bytes_read;
+    int packet_size;
+
+    while ((bytes_read = fread(file_data, 1, max_data_bytes, fp)) > 0) {
+        packet_size = build_data_packet(data_packet, file_data, bytes_read);
+        printf("[TX] Built packet with %d bytes\n",packet_size);
+        int wrote = llwrite(data_packet, packet_size);
+        if(wrote < 0){
+          if (closeSerialPort() < 0) {
+            perror("closeSerialPort");
+          }
+        }
+    }
+    fclose(fp);
   } else {
     unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
     int read_size = 0;
+    FILE *fp = NULL;
+    unsigned char data_buffer[MAX_PAYLOAD_SIZE];
     while (1) {
       while ((read_size = llread(packet)) < 0);
       if (read_size == 0)
         break;
       printf("[RX] Read packet of size %d bytes.\n", read_size);
-      printf("[RX] Packet (ASCII): ");
-      for (int i = 0; i < read_size; i++) {
-        if (packet[i] >= 32 && packet[i] <= 126)
-          printf("%c", packet[i]);
-        else
-          printf(".");
+      if(packet[0] == 1){
+        long file_size;
+        char filename_sender[256];
+        printf("[RX] Read control packet.\n");
+        parse_control_packet(packet, read_size, &file_size, filename_sender);
+        printf("[RX] File name: %s\n", filename_sender);
+        printf("[RX] File size: %ld bytes\n", file_size);
+        fp = fopen(filename, "wb");
+      } else if (packet[0] == 2){
+        if (!fp) {
+                continue;
+            }
+            int data_len = 0;
+            if (parse_data_packet(packet, read_size, data_buffer, &data_len) == 0) {
+                fwrite(data_buffer, 1, data_len, fp);
+                printf("[RX] Wrote %d bytes to file.\n", data_len);
+            }
       }
-      printf("\n");
     }
+    if(fp){fclose(fp);}
   }
 }

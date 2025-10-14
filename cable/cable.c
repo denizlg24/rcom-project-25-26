@@ -63,7 +63,7 @@ int openSerialPort(const char *serialPort, struct termios *oldtio, struct termio
 {
     int fd = open(serialPort, O_RDWR | O_NONBLOCK | O_NOCTTY);
 
-    if (fd < 0)
+    if (fd < -0)
         return -1;
 
     // Save current port settings

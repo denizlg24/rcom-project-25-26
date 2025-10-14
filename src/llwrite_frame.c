@@ -146,10 +146,6 @@ int llwrite_frame(const unsigned char *buf, int bufSize,
   if (!RRReceived) {
     printf("[TX] Timeout! No RR received after %d/%d attempts.\n", tries,
            connectionParameters.nRetransmissions);
-    if (closeSerialPort() < 0) {
-      perror("closeSerialPort");
-      exit(EXIT_FAILURE);
-    }
     return -1;
   }
   ns = (ns + 1) % 2;
