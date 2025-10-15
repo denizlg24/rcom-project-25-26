@@ -11,6 +11,7 @@ static int readyFor = 0;
 int read_header(const unsigned char *expectedHeader) {
   State currState = START;
   State prevState = START;
+  State setState = START;
   unsigned char dummyAbort = 0;
   unsigned char byte;
 
@@ -25,12 +26,18 @@ int read_header(const unsigned char *expectedHeader) {
     }
 
     if (bytes > 0){
+      /*int setReceived = !*/processStateMachine(&setState,byte,&dummyAbort,SET_FRAME);
       int expectedSuccess = !processStateMachine(&currState, byte, &dummyAbort, expectedHeader);
-      int previousReceived = !processStateMachine(&prevState,byte,&dummyAbort,readyFor == 0 ? I1_HEADER : I0_HEADER);
-      if(expectedSuccess||previousReceived) break;
+      /*int previousReceived = !*/processStateMachine(&prevState,byte,&dummyAbort,readyFor == 0 ? I1_HEADER : I0_HEADER);
+      if(expectedSuccess) break;
       if(prevState == BCC_OK){
         send_frame(readyFor == 0 ? RR0_FRAME : RR1_FRAME, 5);
         return -1;
+      }
+      if(setState == STOP){
+        send_frame(UA_FRAME, 5);
+        printf("[RX] Got SET Frame again -- Connection was lost -- Sent UA Again.\n");
+        return -2;
       }
     }
   }
@@ -41,7 +48,7 @@ int read_packet(unsigned char *packet, const unsigned char *expectedHeader) {
 
   int headerRead = read_header(expectedHeader);
   if (headerRead != 0) {
-    return -1;
+    return headerRead;
   }
 
   unsigned char byte;

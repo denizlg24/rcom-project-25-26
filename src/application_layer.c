@@ -74,8 +74,11 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     FILE *fp = NULL;
     unsigned char data_buffer[MAX_PAYLOAD_SIZE];
     while (1) {
-      while ((read_size = llread(packet)) < 0)
-        ;
+      while ((read_size = llread(packet)) < 0){
+        if(read_size == -2){
+           memset(packet, 0, MAX_PAYLOAD_SIZE);
+        }
+      }
       if (read_size == 0)
         break;
       printf("[RX] Read packet of size %d bytes.\n", read_size);
