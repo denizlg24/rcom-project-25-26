@@ -13,8 +13,8 @@ TX_SERIAL_PORT = /dev/ttyS10
 RX_SERIAL_PORT = /dev/ttyS11
 BAUD_RATE = 9600
 
-TX_FILE = filename.txt
-RX_FILE = filename2.txt
+TX_FILE = penguin.gif
+RX_FILE = penguin-received.gif
 
 # Main
 .PHONY: all

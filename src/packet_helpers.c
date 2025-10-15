@@ -45,6 +45,34 @@ int build_control_packet(unsigned char* packet,const unsigned char* filename,int
     return index;
 }
 
+int build_end_packet(unsigned char* packet,const unsigned char* filename,int filename_length,int file_size){
+    int index = 0;
+    packet[index++] = 3;
+
+    packet[index++] = 0;
+
+    int temp_size = file_size;
+    int L1 = 0;
+    do {
+        L1++;
+        temp_size >>= 8;
+    } while (temp_size > 0);
+
+    packet[index++] = L1;
+
+    for (int i = L1 - 1; i >= 0; i--) {
+        packet[index++] = (file_size >> (8 * i)) & 0xFF;
+    }
+
+    packet[index++] = 1;
+    packet[index++] = filename_length;
+
+    for (int i = 0; i < filename_length; i++) {
+        packet[index++] = filename[i];
+    }
+    return index;
+}
+
 int build_data_packet(unsigned char* packet, const unsigned char* data, int data_length) {
     int index = 0;
     packet[index++] = 2;
@@ -89,8 +117,8 @@ int parse_data_packet(const unsigned char* packet, int length, unsigned char* da
         return -1;
     }
 
-    unsigned char L2 = packet[index++];
     unsigned char L1 = packet[index++];
+    unsigned char L2 = packet[index++];
     *data_length = (L1 << 8) | L2;
 
     if (*data_length > length - 3) {
