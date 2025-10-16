@@ -1,5 +1,6 @@
 // Link layer protocol implementation
 #include "llopen_connection.h"
+#include "llclose_connection.h"
 #include "llread_frame.h"
 #include "llwrite_frame.h"
 #include "serial_port.h"
@@ -45,7 +46,5 @@ int llread(unsigned char *packet) { return llread_frame(packet); }
 // LLCLOSE
 ////////////////////////////////////////////////
 int llclose() {
-  // TODO: Implement this function
-
-  return 0;
+  return llclose_connection(connectionParams);
 }

@@ -30,6 +30,8 @@ static const unsigned char SET_FRAME[5] = {FLAG, A_TX, C_SET, BCC1(A_TX, C_SET),
                                            FLAG};
 static const unsigned char UA_FRAME[5] = {FLAG, A_RX, C_UA, BCC1(A_RX, C_UA),
                                           FLAG};
+static const unsigned char TX_UA_FRAME[5] = {FLAG, A_TX, C_UA, BCC1(A_TX, C_UA),
+                                          FLAG};
 static const unsigned char DISC_TX_FRAME[5] = {FLAG, A_TX, C_DISC,
                                                BCC1(A_TX, C_DISC), FLAG};
 static const unsigned char DISC_RX_FRAME[5] = {FLAG, A_RX, C_DISC,
@@ -49,6 +51,6 @@ static const unsigned char I1_HEADER[4] = {FLAG, A_TX, C_I1, BCC1(A_TX, C_I1)};
 unsigned char compute_bcc2(const unsigned char *data, size_t length);
 
 int send_frame(const unsigned char *frame, size_t size);
-int read_frame(const unsigned char *expected,unsigned char *abortSignal);
+int read_frame(const unsigned char *expected, unsigned char *abortSignal);
 
 #endif

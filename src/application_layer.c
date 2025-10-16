@@ -21,13 +21,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
   options.timeout = timeout;
 
   if (llopen(options) < 0) {
-    exit(-1);
+    exit(0);
   }
 
   if (options.role == LlTx) {
     long file_size = get_file_size(filename);
-    if (file_size < 0)
-      exit(EXIT_FAILURE);
+    if (file_size < 0) {
+      exit(llclose());
+    }
 
     unsigned char control_packet[256];
     int control_packet_size =
@@ -38,10 +39,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
       perror("Error opening file");
-      exit(EXIT_FAILURE);
+      exit(llclose());
     }
 
-    int max_data_bytes = MAX_PAYLOAD_SIZE-3;
+    int max_data_bytes = MAX_PAYLOAD_SIZE - 3;
     unsigned char file_data[max_data_bytes];
     unsigned char data_packet[MAX_PAYLOAD_SIZE];
     size_t bytes_read;
@@ -52,9 +53,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
       printf("[TX] Built packet with %d bytes\n", packet_size);
       int wrote = llwrite(data_packet, packet_size);
       if (wrote < 0) {
-        if (closeSerialPort() < 0) {
-          perror("closeSerialPort");
-        }
+        fclose(fp);
+        exit(llclose());
       }
     }
     fclose(fp);
@@ -64,19 +64,20 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         build_end_packet(end_packet, (const unsigned char *)filename,
                          strlen(filename), file_size);
     llwrite(end_packet, end_packet_size);
-    if (closeSerialPort() < 0) {
-      perror("closeSerialPort");
-      exit(EXIT_SUCCESS);
-    }
+    exit(llclose());
   } else {
     unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
     int read_size = 0;
     FILE *fp = NULL;
     unsigned char data_buffer[MAX_PAYLOAD_SIZE];
     while (1) {
-      while ((read_size = llread(packet)) < 0){
-        if(read_size == -2){
-           memset(packet, 0, MAX_PAYLOAD_SIZE);
+      while ((read_size = llread(packet)) < 0) {
+        if (read_size == -2) {
+          memset(packet, 0, MAX_PAYLOAD_SIZE);
+          if (fp) {
+            fclose(fp);
+            remove(filename);
+          }
         }
       }
       if (read_size == 0)
@@ -104,10 +105,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         if (fp) {
           fclose(fp);
         }
-        if (closeSerialPort() < 0) {
-          perror("closeSerialPort");
-          exit(EXIT_SUCCESS);
-        }
+        llclose();
+        break;
       }
     }
   }
