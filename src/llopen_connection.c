@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "link_layer_stats.h"
 
 static int tries = 0;
 static unsigned char abortSignal = 0;
@@ -27,8 +28,8 @@ static int send_and_wait_ua(LinkLayer connectionParameters) {
 
   alarm(connectionParameters.timeout);
   send_frame(SET_FRAME, sizeof(SET_FRAME));
+  ll_stats.total_bytes_sent += sizeof(SET_FRAME);
   abortSignal = 0;
-
   int success = read_frame(UA_FRAME, &abortSignal);
   alarm(0);
   return success;
@@ -73,6 +74,7 @@ int llopen_rx_connection(LinkLayer connectionParameters) {
   if (read_frame(SET_FRAME, &dummyAbort)) {
     printf("[RX] SET frame received. Sending UA response...\n");
     send_frame(UA_FRAME, sizeof(UA_FRAME));
+    ll_stats.total_bytes_sent += sizeof(UA_FRAME);
     printf("[RX] Connection established successfully.\n");
     return 0;
   }

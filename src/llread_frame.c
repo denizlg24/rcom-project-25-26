@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "link_layer_stats.h"
 static int readyFor = 0;
 
 int read_header(const unsigned char *expectedHeader) {
@@ -32,10 +32,12 @@ int read_header(const unsigned char *expectedHeader) {
       if(expectedSuccess) break;
       if(prevState == BCC_OK){
         send_frame(readyFor == 0 ? RR0_FRAME : RR1_FRAME, 5);
+        ll_stats.total_bytes_sent += 5;
         return -1;
       }
       if(setState == STOP){
         send_frame(UA_FRAME, 5);
+        ll_stats.total_bytes_sent += 5;
         printf("[RX] Got SET Frame again -- Connection was lost -- Sent UA Again.\n");
         return -2;
       }
@@ -93,11 +95,13 @@ int read_packet(unsigned char *packet, const unsigned char *expectedHeader) {
         if (bcc2 != computed) {
           printf("[RX] BCC2 error: expected %02X, got %02X\n", computed, bcc2);
           send_frame(readyFor == 0 ? REJ0_FRAME : REJ1_FRAME, 5);
+          ll_stats.total_bytes_sent += 5;
           return -1;
         }
         readyFor = (readyFor + 1) % 2;
         memcpy(packet, frame + 4, payloadSize);
         send_frame(readyFor == 1 ? RR1_FRAME : RR0_FRAME, 5);
+        ll_stats.total_bytes_sent += 5;
         return payloadSize;
       }
       i++;

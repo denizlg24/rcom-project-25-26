@@ -2,11 +2,13 @@
 
 #include "application_layer.h"
 #include "link_layer.h"
+#include "link_layer_stats.h"
 #include "packet_helpers.h"
 #include "serial_port.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename) {
@@ -19,7 +21,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
   options.baudRate = baudRate;
   options.nRetransmissions = nTries;
   options.timeout = timeout;
-
+  reset_link_layer_stats();
+  clock_t start_time = clock();
   if (llopen(options) < 0) {
     exit(0);
   }
@@ -47,24 +50,38 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     unsigned char data_packet[MAX_PAYLOAD_SIZE];
     size_t bytes_read;
     int packet_size;
-
+    clock_t start_time_data = clock();
     while ((bytes_read = fread(file_data, 1, max_data_bytes, fp)) > 0) {
       packet_size = build_data_packet(data_packet, file_data, bytes_read);
-      printf("[TX] Built packet with %d bytes\n", packet_size);
       int wrote = llwrite(data_packet, packet_size);
       if (wrote < 0) {
         fclose(fp);
         exit(llclose());
       }
     }
+    clock_t end_time_data = clock();
     fclose(fp);
+    double data_seconds =
+        (double)(end_time_data - start_time_data) / CLOCKS_PER_SEC;
 
     unsigned char end_packet[256];
     int end_packet_size =
         build_end_packet(end_packet, (const unsigned char *)filename,
                          strlen(filename), file_size);
     llwrite(end_packet, end_packet_size);
-    exit(llclose());
+    int close_status = llclose();
+    clock_t end_time = clock();
+    double total_seconds = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    printf("[TX] --- STATISTICS ---\n");
+    printf("[TX] Total time: %f seconds\n", total_seconds);
+    printf("[TX] Data transfer time: %f seconds\n", data_seconds);
+    printf("[TX] Total data bytes sent: %ld bytes\n",
+           ll_stats.total_data_bytes_sent);
+    printf("[TX] Total data bytes read: %ld bytes\n",
+           ll_stats.total_data_bytes_received);
+    printf("[TX] Total bytes sent: %ld bytes\n",
+           ll_stats.total_bytes_sent + ll_stats.total_data_bytes_sent);
+    exit(close_status);
   } else {
     unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
     int read_size = 0;
@@ -82,21 +99,19 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
       }
       if (read_size == 0)
         break;
-      printf("[RX] Read packet of size %d bytes.\n", read_size);
       if (packet[0] == 1) {
         long file_size;
         char filename_sender[256];
-        printf("[RX] Read control packet.\n");
         parse_control_packet(packet, read_size, &file_size, filename_sender);
         printf("[RX] File name: %s\n", filename_sender);
         printf("[RX] File size: %ld bytes\n", file_size);
         fp = fopen(filename, "wb");
       } else if (packet[0] == 2) {
-        printf("[RX] Read data packet\n");
         if (!fp) {
           continue;
         }
         int data_len = 0;
+        ll_stats.total_data_bytes_received += read_size;
         if (parse_data_packet(packet, read_size, data_buffer, &data_len) == 0) {
           fwrite(data_buffer, 1, data_len, fp);
           printf("[RX] Wrote %d bytes to file.\n", data_len);
@@ -105,8 +120,15 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         if (fp) {
           fclose(fp);
         }
-        llclose();
-        break;
+        int close_status = llclose();
+        printf("[RX] --- STATISTICS ---\n");
+        printf("[RX] Total data bytes sent: %ld bytes\n",
+               ll_stats.total_data_bytes_sent);
+        printf("[RX] Total data bytes read: %ld bytes\n",
+               ll_stats.total_data_bytes_received);
+        printf("[RX] Total bytes sent: %ld bytes\n",
+               ll_stats.total_bytes_sent + ll_stats.total_data_bytes_received);
+        exit(close_status);
       }
     }
   }

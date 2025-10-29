@@ -4,6 +4,7 @@
 #include "frame_helpers.h"
 #include "link_layer_state_machine.h"
 #include "serial_port.h"
+#include "link_layer_stats.h"
 #include "string.h"
 #include <signal.h>
 #include <stdio.h>
@@ -98,6 +99,7 @@ static int send_and_wait(LinkLayer connectionParameters,
 
   alarm(connectionParameters.timeout);
   send_frame(frame, *frameSize);
+  ll_stats.total_data_bytes_sent += *frameSize;
   abortSignal = 0;
   printf("[TX] Attempt %d/%d: Waiting for RR%d...\n", tries + 1,
          connectionParameters.nRetransmissions, (ns + 1) % 2);

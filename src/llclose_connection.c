@@ -3,10 +3,11 @@
 #include "llclose_connection.h"
 #include "frame_helpers.h"
 #include "link_layer_state_machine.h"
+#include "link_layer_stats.h"
 #include "serial_port.h"
 #include <signal.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 static unsigned char txAbortSignal = 0;
 static unsigned char rxAbortSignal = 0;
@@ -23,9 +24,11 @@ int close_tx_connection(LinkLayer connectionParameters) {
   }
   alarm(3);
   send_frame(DISC_TX_FRAME, 5);
+  ll_stats.total_bytes_sent += 5;
   if (read_frame(DISC_RX_FRAME, &txAbortSignal)) {
     printf("[TX] Got RX_DISC, disconnecting...\n");
-    send_frame(TX_UA_FRAME,5);
+    send_frame(TX_UA_FRAME, 5);
+    ll_stats.total_bytes_sent += 5;
     if (closeSerialPort() < 0) {
       perror("closeSerialPort");
       exit(-1);
@@ -51,6 +54,7 @@ int close_rx_connection(LinkLayer connectionParameters) {
   }
   alarm(3);
   send_frame(DISC_RX_FRAME, 5);
+  ll_stats.total_bytes_sent += 5;
   if (read_frame(TX_UA_FRAME, &rxAbortSignal)) {
     printf("[RX] Got UA, disconnecting...\n");
     if (closeSerialPort() < 0) {
