@@ -38,7 +38,7 @@ int read_frame(const unsigned char *expected, unsigned char *abortSignal) {
     }
 
     if (bytes > 0 &&
-        !processStateMachine(&currState, byte, abortSignal, expected)) {
+        !processStateMachine(&currState, byte, abortSignal, expected,NULL)) {
       break;
     }
   }

@@ -7,8 +7,8 @@
 typedef enum { START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, STOP } State;
 
 State transitionState(State currState, unsigned char byte,
-                      const unsigned char *expectedHeader);
+                      const unsigned char *expectedHeader,int *bcc1_errors);
 int processStateMachine(State *currState, unsigned char byte, unsigned char *abortSignal,
-                        const unsigned char *expectedHeader);
+                        const unsigned char *expectedHeader,int *bcc1_errors);
 
 #endif

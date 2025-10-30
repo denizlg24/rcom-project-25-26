@@ -3,14 +3,13 @@
 #include "llopen_connection.h"
 #include "frame_helpers.h"
 #include "link_layer_state_machine.h"
+#include "link_layer_stats.h"
 #include "serial_port.h"
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "link_layer_stats.h"
-
 static int tries = 0;
 static unsigned char abortSignal = 0;
 
@@ -28,7 +27,6 @@ static int send_and_wait_ua(LinkLayer connectionParameters) {
 
   alarm(connectionParameters.timeout);
   send_frame(SET_FRAME, sizeof(SET_FRAME));
-  ll_stats.total_bytes_sent += sizeof(SET_FRAME);
   abortSignal = 0;
   int success = read_frame(UA_FRAME, &abortSignal);
   alarm(0);
@@ -60,7 +58,8 @@ int llopen_tx_connection(LinkLayer connectionParameters) {
     }
     return -1;
   }
-
+  ll_stats.start_time = clock();
+  ll_stats.total_frames++;
   printf("[TX] UA received successfully! Connection established.\n");
   return 0;
 }
@@ -72,9 +71,12 @@ int llopen_rx_connection(LinkLayer connectionParameters) {
   printf("[RX] Waiting for SET frame from transmitter...\n");
   unsigned char dummyAbort = 0;
   if (read_frame(SET_FRAME, &dummyAbort)) {
+    ll_stats.start_time = clock();
+    ll_stats.total_frames++;
+    ll_stats.total_bytes_read += 5;
+    srand(time(NULL));
     printf("[RX] SET frame received. Sending UA response...\n");
     send_frame(UA_FRAME, sizeof(UA_FRAME));
-    ll_stats.total_bytes_sent += sizeof(UA_FRAME);
     printf("[RX] Connection established successfully.\n");
     return 0;
   }

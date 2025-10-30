@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename) {
@@ -21,8 +20,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
   options.baudRate = baudRate;
   options.nRetransmissions = nTries;
   options.timeout = timeout;
-  reset_link_layer_stats();
-  clock_t start_time = clock();
   if (llopen(options) < 0) {
     exit(0);
   }
@@ -50,7 +47,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     unsigned char data_packet[MAX_PAYLOAD_SIZE];
     size_t bytes_read;
     int packet_size;
-    clock_t start_time_data = clock();
     while ((bytes_read = fread(file_data, 1, max_data_bytes, fp)) > 0) {
       packet_size = build_data_packet(data_packet, file_data, bytes_read);
       int wrote = llwrite(data_packet, packet_size);
@@ -59,10 +55,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         exit(llclose());
       }
     }
-    clock_t end_time_data = clock();
     fclose(fp);
-    double data_seconds =
-        (double)(end_time_data - start_time_data) / CLOCKS_PER_SEC;
 
     unsigned char end_packet[256];
     int end_packet_size =
@@ -70,17 +63,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                          strlen(filename), file_size);
     llwrite(end_packet, end_packet_size);
     int close_status = llclose();
-    clock_t end_time = clock();
-    double total_seconds = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     printf("[TX] --- STATISTICS ---\n");
-    printf("[TX] Total time: %f seconds\n", total_seconds);
-    printf("[TX] Data transfer time: %f seconds\n", data_seconds);
-    printf("[TX] Total data bytes sent: %ld bytes\n",
-           ll_stats.total_data_bytes_sent);
-    printf("[TX] Total data bytes read: %ld bytes\n",
-           ll_stats.total_data_bytes_received);
-    printf("[TX] Total bytes sent: %ld bytes\n",
-           ll_stats.total_bytes_sent + ll_stats.total_data_bytes_sent);
+    printf("Total frames: %ld\n", ll_stats.total_frames);
+    printf("Retransmissions: %ld\n", ll_stats.retransmissions);
+    printf("Total time: %f seconds\n",
+           (double)(ll_stats.end_time - ll_stats.start_time) / CLOCKS_PER_SEC);
+    printf("Measured efficiency: %f\n", measured_effeciency(options.baudRate));
+    printf("Theoretical efficiency: %f\n",
+           theoretical_effeciency(options.baudRate, MAX_PAYLOAD_SIZE));
     exit(close_status);
   } else {
     unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
@@ -111,7 +101,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
           continue;
         }
         int data_len = 0;
-        ll_stats.total_data_bytes_received += read_size;
         if (parse_data_packet(packet, read_size, data_buffer, &data_len) == 0) {
           fwrite(data_buffer, 1, data_len, fp);
           printf("[RX] Wrote %d bytes to file.\n", data_len);
@@ -122,12 +111,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         }
         int close_status = llclose();
         printf("[RX] --- STATISTICS ---\n");
-        printf("[RX] Total data bytes sent: %ld bytes\n",
-               ll_stats.total_data_bytes_sent);
-        printf("[RX] Total data bytes read: %ld bytes\n",
-               ll_stats.total_data_bytes_received);
-        printf("[RX] Total bytes sent: %ld bytes\n",
-               ll_stats.total_bytes_sent + ll_stats.total_data_bytes_received);
+        printf("Total frames: %ld\n", ll_stats.total_frames);
+        printf("Error frames: %ld\n", ll_stats.error_frames);
+        printf("Read bytes: %ld\n", ll_stats.total_bytes_read);
+        printf("Total time: %f seconds\n",
+               (double)(ll_stats.end_time - ll_stats.start_time) /
+                   CLOCKS_PER_SEC);
+        printf("Measured bit rate: %f\n", measured_bit_rate());
+        printf("\n");
         exit(close_status);
       }
     }

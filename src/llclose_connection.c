@@ -24,11 +24,11 @@ int close_tx_connection(LinkLayer connectionParameters) {
   }
   alarm(3);
   send_frame(DISC_TX_FRAME, 5);
-  ll_stats.total_bytes_sent += 5;
+  ll_stats.total_frames++;
   if (read_frame(DISC_RX_FRAME, &txAbortSignal)) {
     printf("[TX] Got RX_DISC, disconnecting...\n");
     send_frame(TX_UA_FRAME, 5);
-    ll_stats.total_bytes_sent += 5;
+    ll_stats.total_frames++;
     if (closeSerialPort() < 0) {
       perror("closeSerialPort");
       exit(-1);
@@ -54,7 +54,8 @@ int close_rx_connection(LinkLayer connectionParameters) {
   }
   alarm(3);
   send_frame(DISC_RX_FRAME, 5);
-  ll_stats.total_bytes_sent += 5;
+  ll_stats.total_frames++;
+  ll_stats.total_bytes_read += 5;
   if (read_frame(TX_UA_FRAME, &rxAbortSignal)) {
     printf("[RX] Got UA, disconnecting...\n");
     if (closeSerialPort() < 0) {
@@ -74,8 +75,13 @@ int close_rx_connection(LinkLayer connectionParameters) {
 }
 
 int llclose_connection(LinkLayer connectionParameters) {
-  if (connectionParameters.role == LlRx)
-    return close_rx_connection(connectionParameters);
-  else
-    return close_tx_connection(connectionParameters);
+  if (connectionParameters.role == LlRx) {
+    int closed_rx = close_rx_connection(connectionParameters);
+    ll_stats.end_time = clock();
+    return closed_rx;
+  } else {
+    int closed_tx = close_tx_connection(connectionParameters);
+     ll_stats.end_time = clock();
+    return closed_tx;
+  }
 }

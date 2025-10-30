@@ -3,14 +3,15 @@
 #include "llwrite_frame.h"
 #include "frame_helpers.h"
 #include "link_layer_state_machine.h"
-#include "serial_port.h"
 #include "link_layer_stats.h"
+#include "serial_port.h"
 #include "string.h"
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 
 unsigned char ns = 0;
 int tries = 0;
@@ -77,10 +78,11 @@ int read_response(const unsigned char *expected, unsigned char *abortSignal) {
     }
 
     if (bytes > 0) {
-      int isSuccess =
-          !processStateMachine(&successState, byte, abortSignal, expected);
-      int rejected = !processStateMachine(&rejectState, byte, abortSignal,
-                                          ns == 0 ? REJ0_FRAME : REJ1_FRAME);
+      int isSuccess = !processStateMachine(&successState, byte, abortSignal,
+                                           expected, NULL);
+      int rejected =
+          !processStateMachine(&rejectState, byte, abortSignal,
+                               ns == 0 ? REJ0_FRAME : REJ1_FRAME, NULL);
       if (isSuccess || rejected)
         break;
     }
@@ -91,15 +93,16 @@ int read_response(const unsigned char *expected, unsigned char *abortSignal) {
   return successState == STOP;
 }
 
-static int send_and_wait(LinkLayer connectionParameters,
-                         const unsigned char *frame, int *frameSize,
-                         const unsigned char *expectedResponse) {
+int send_and_wait(LinkLayer connectionParameters, const unsigned char *frame,
+                  int *frameSize, const unsigned char *expectedResponse) {
   printf("[TX] Attempt %d/%d: Sending frame...\n", tries + 1,
          connectionParameters.nRetransmissions);
-
   alarm(connectionParameters.timeout);
+  if (tries != 0) {
+    ll_stats.retransmissions++;
+  }
   send_frame(frame, *frameSize);
-  ll_stats.total_data_bytes_sent += *frameSize;
+  ll_stats.total_frames++;
   abortSignal = 0;
   printf("[TX] Attempt %d/%d: Waiting for RR%d...\n", tries + 1,
          connectionParameters.nRetransmissions, (ns + 1) % 2);
@@ -114,6 +117,7 @@ static int send_and_wait(LinkLayer connectionParameters,
   } else {
     printf("[TX] Attempt %d/%d: Got REJ%d\n", tries + 1,
            connectionParameters.nRetransmissions, ns);
+    ll_stats.retransmissions++;
   }
   return success;
 }
