@@ -63,13 +63,13 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                          strlen(filename), file_size);
     llwrite(end_packet, end_packet_size);
     int close_status = llclose();
-    printf("[TX] --- STATISTICS ---\n");
-    printf("Total frames: %ld\n", ll_stats.total_frames);
-    printf("Retransmissions: %ld\n", ll_stats.retransmissions);
-    printf("Total time: %f seconds\n",
+    printf("[TX] --- STATS ---\n");
+    printf("[TX] Total frames: %ld\n", ll_stats.total_frames);
+    printf("[TX] Retransmissions: %ld\n", ll_stats.retransmissions);
+    printf("[TX] Total time: %f seconds\n",
            (double)(ll_stats.end_time - ll_stats.start_time) / CLOCKS_PER_SEC);
-    printf("Measured efficiency: %f\n", measured_effeciency(options.baudRate));
-    printf("Theoretical efficiency: %f\n",
+    printf("[TX] Measured efficiency: %f\n", measured_effeciency(options.baudRate));
+    printf("[TX] Theoretical efficiency: %f\n",
            theoretical_effeciency(options.baudRate, MAX_PAYLOAD_SIZE));
     exit(close_status);
   } else {
@@ -110,15 +110,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
           fclose(fp);
         }
         int close_status = llclose();
-        printf("[RX] --- STATISTICS ---\n");
-        printf("Total frames: %ld\n", ll_stats.total_frames);
-        printf("Error frames: %ld\n", ll_stats.error_frames);
-        printf("Read bytes: %ld\n", ll_stats.total_bytes_read);
-        printf("Total time: %f seconds\n",
+        printf("[RX] --- STATS ---\n");
+        printf("[RX] Total frames: %ld\n", ll_stats.total_frames);
+        printf("[RX] Error frames: %ld\n", ll_stats.error_frames);
+        printf("[RX] Read bytes: %ld\n", ll_stats.total_bytes_read);
+        printf("[RX] Total time: %f seconds\n",
                (double)(ll_stats.end_time - ll_stats.start_time) /
                    CLOCKS_PER_SEC);
-        printf("Measured bit rate: %f\n", measured_bit_rate());
-        printf("\n");
+        printf("[RX] Measured bit rate: %f\n", measured_bit_rate());
         exit(close_status);
       }
     }

@@ -39,14 +39,15 @@ int read_header(const unsigned char *expectedHeader) {
         break;
       if (prevState == BCC_OK) {
         ll_stats.error_frames += error_frames;
+        printf("[RX] Duplicate frame detected. Resending RR%d.\n", readyFor);
         send_frame(readyFor == 0 ? RR0_FRAME : RR1_FRAME, 5);
         return -1;
       }
       if (setState == STOP) {
         ll_stats.error_frames += error_frames;
-        send_frame(UA_FRAME, 5);
         printf("[RX] Got SET Frame again -- Connection was lost -- Sent UA "
                "Again.\n");
+        send_frame(UA_FRAME, 5);
         return -2;
       }
     }
