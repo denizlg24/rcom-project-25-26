@@ -3,7 +3,7 @@
 
 #include <time.h>
 #define FILESIZE 10968 // in bytes
-#define T_PROP 0 // in milliseconds
+#define T_PROP 500 // in milliseconds
 #define BCC1_ERROR_PROB 0 // in percentage
 #define BCC2_ERROR_PROB 0 // in percentage
 
